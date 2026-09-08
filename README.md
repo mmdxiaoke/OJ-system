@@ -29,18 +29,18 @@ python run.py frontend
 首次启动会自动创建数据目录 `data/`、内置语言（`python` / `cpp` / `c`）以及初始管理员
 账号：
 
-| 用户名 | 密码 | 角色 |
-| --- | --- | --- |
+| 用户名     | 密码                  | 角色    |
+| ------- | ------------------- | ----- |
 | `admin` | `admintestpassword` | admin |
 
 可用环境变量覆盖：
 
-| 变量 | 含义 | 默认值 |
-| --- | --- | --- |
-| `OJ_DATA_DIR` | 数据目录 | `<项目根>/data` |
-| `OJ_API_BASE` | 前端访问的后端地址 | `http://127.0.0.1:8000` |
-| `OJ_RESET_OPEN` | 置为 `1` 时，登录用户即可调用 `/api/reset/`（便于自动测试） | 未设置 |
-| `OJ_SESSION_HTTPS` | 置为 `1` 时 Cookie 带 `Secure` 标记 | 未设置 |
+| 变量                 | 含义                                      | 默认值                     |
+| ------------------ | --------------------------------------- | ----------------------- |
+| `OJ_DATA_DIR`      | 数据目录                                    | `<项目根>/data`            |
+| `OJ_API_BASE`      | 前端访问的后端地址                               | `http://127.0.0.1:8000` |
+| `OJ_RESET_OPEN`    | 置为 `1` 时，登录用户即可调用 `/api/reset/`（便于自动测试） | 未设置                     |
+| `OJ_SESSION_HTTPS` | 置为 `1` 时 Cookie 带 `Secure` 标记           | 未设置                     |
 
 ---
 
@@ -71,12 +71,12 @@ OJ/
 │   │   └── task_manager.py  # 任务调度、SSE 进度、中断、Token 计费
 │   └── routers/             # 各模块路由
 ├── frontend/                # Streamlit 前端
-│   ├── app.py               # 入口与导航
+│   ├── app.py               # 入口、侧边栏导航与状态展示
 │   ├── api_client.py        # 统一 REST 调用封装（Cookie 会话）
-│   └── views/               # 用户中心 / 题库 / 评测中心 / AI 智能命题
+│   └── views/               # 仪表盘 / 用户中心 / 题库 / 评测中心 / AI 智能命题
 ├── tests/
 │   ├── test_api.py          # 端到端接口测试（228 项断言）
-│   ├── test_frontend.py     # 前端页面冒烟测试（Streamlit AppTest）
+│   ├── test_frontend.py     # 前端渲染 + 交互测试（31 项断言，Streamlit AppTest）
 │   └── fake_llm_server.py   # 本地假模型服务，用于离线验证 AI 链路
 ├── data/                    # 运行时数据（已加入 .gitignore）
 ├── run.py                   # 一键启动脚本
@@ -91,60 +91,60 @@ OJ/
 
 ### Step 1 题目管理
 
-| 方法 | 路径 | 权限 |
-| --- | --- | --- |
-| GET | `/api/problems/` | 登录用户 |
-| POST | `/api/problems/` | 登录用户 |
-| GET | `/api/problems/{problem_id}` | 登录用户 |
-| PUT | `/api/problems/{problem_id}` | 登录用户 |
+| 方法     | 路径                           | 权限       |
+| ------ | ---------------------------- | -------- |
+| GET    | `/api/problems/`             | 登录用户     |
+| POST   | `/api/problems/`             | 登录用户     |
+| GET    | `/api/problems/{problem_id}` | 登录用户     |
+| PUT    | `/api/problems/{problem_id}` | 登录用户     |
 | DELETE | `/api/problems/{problem_id}` | **仅管理员** |
 
 ### Step 2 & 3 评测
 
-| 方法 | 路径 | 权限 |
-| --- | --- | --- |
-| POST | `/api/submissions/` | 登录用户（1 分钟最多 3 次） |
-| GET | `/api/submissions/` | 本人 / 管理员 |
-| GET | `/api/submissions/{submission_id}` | 本人 / 管理员 |
-| PUT | `/api/submissions/{submission_id}/rejudge` | **仅管理员** |
-| POST | `/api/languages/` | 登录用户 |
-| GET | `/api/languages/` | 公开 |
+| 方法   | 路径                                         | 权限               |
+| ---- | ------------------------------------------ | ---------------- |
+| POST | `/api/submissions/`                        | 登录用户（1 分钟最多 3 次） |
+| GET  | `/api/submissions/`                        | 本人 / 管理员         |
+| GET  | `/api/submissions/{submission_id}`         | 本人 / 管理员         |
+| PUT  | `/api/submissions/{submission_id}/rejudge` | **仅管理员**         |
+| POST | `/api/languages/`                          | 登录用户             |
+| GET  | `/api/languages/`                          | 公开               |
 
 ### Step 4 用户
 
-| 方法 | 路径 | 权限 |
-| --- | --- | --- |
+| 方法   | 路径                                     | 权限       |
+| ---- | -------------------------------------- | -------- |
 | POST | `/api/auth/login` / `/api/auth/logout` | 登录用户（登出） |
-| POST | `/api/users/` | 公开（注册） |
-| POST | `/api/users/admin` | **仅管理员** |
-| GET | `/api/users/{user_id}` | 本人 / 管理员 |
-| GET | `/api/users/` | **仅管理员** |
-| PUT | `/api/users/{user_id}/role` | **仅管理员** |
+| POST | `/api/users/`                          | 公开（注册）   |
+| POST | `/api/users/admin`                     | **仅管理员** |
+| GET  | `/api/users/{user_id}`                 | 本人 / 管理员 |
+| GET  | `/api/users/`                          | **仅管理员** |
+| PUT  | `/api/users/{user_id}/role`            | **仅管理员** |
 
 ### Step 5 日志
 
-| 方法 | 路径 | 权限 |
-| --- | --- | --- |
-| GET | `/api/submissions/{submission_id}/log` | 本人 / 管理员 / 题目公开日志时任意登录用户 |
-| PUT | `/api/problems/{problem_id}/log_visibility` | **仅管理员** |
-| GET | `/api/logs/access/` | **仅管理员** |
+| 方法  | 路径                                          | 权限                       |
+| --- | ------------------------------------------- | ------------------------ |
+| GET | `/api/submissions/{submission_id}/log`      | 本人 / 管理员 / 题目公开日志时任意登录用户 |
+| PUT | `/api/problems/{problem_id}/log_visibility` | **仅管理员**                 |
+| GET | `/api/logs/access/`                         | **仅管理员**                 |
 
 ### Advance AI 智能命题
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET/PUT | `/api/ai/model-config` | 配置提供商 URL / 模型 / 密钥 / 计价方式（查询不返回密钥） |
-| POST | `/api/ai/problem-tasks/` | 创建命题任务（异步执行） |
-| GET | `/api/ai/problem-tasks/{task_id}` | 状态、进度、结果、Token 用量与费用 |
-| GET | `/api/ai/problem-tasks/{task_id}/events` | **SSE 实时进度** |
-| PUT | `/api/ai/problem-tasks/{task_id}/cancel` | 中断任务（真正取消后台任务与 HTTP 请求） |
-| POST | `/api/ai/problem-tasks/{task_id}/apply` | 把生成结果导入题库（新增 / 覆盖） |
+| 方法      | 路径                                       | 说明                                  |
+| ------- | ---------------------------------------- | ----------------------------------- |
+| GET/PUT | `/api/ai/model-config`                   | 配置提供商 URL / 模型 / 密钥 / 计价方式（查询不返回密钥） |
+| POST    | `/api/ai/problem-tasks/`                 | 创建命题任务（异步执行）                        |
+| GET     | `/api/ai/problem-tasks/{task_id}`        | 状态、进度、结果、Token 用量与费用                |
+| GET     | `/api/ai/problem-tasks/{task_id}/events` | **SSE 实时进度**                        |
+| PUT     | `/api/ai/problem-tasks/{task_id}/cancel` | 中断任务（真正取消后台任务与 HTTP 请求）             |
+| POST    | `/api/ai/problem-tasks/{task_id}/apply`  | 把生成结果导入题库（新增 / 覆盖）                  |
 
 ### 其他
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/health` | 健康检查 |
+| 方法   | 路径            | 说明                   |
+| ---- | ------------- | -------------------- |
+| GET  | `/health`     | 健康检查                 |
 | POST | `/api/reset/` | 系统重置（清空测试数据并重建初始管理员） |
 
 ---
@@ -200,7 +200,6 @@ FastAPI 默认的 422 被全局异常处理器改写成 400（参考 FAQ）。
 5. **实际执行与校验**：真正运行脚本得到输入 → 用标程产出期望输出 →
    在 `scale=small` 的测试点上与暴力解交叉验证，不一致则回到第 3 步重试（最多两轮）；
 6. **整理结果**：输出完整题目配置，可一键导入题库。
-
 * **实时进度与中断**：进度事件通过 SSE 推送；中断时 `task.cancel()` 会真正取消后台
   asyncio 任务与进行中的 HTTP 请求，任务状态变为 `cancelled`；
 * **Token 与费用**：分别累计输入/输出 Token（来自模型 `usage` 字段），
@@ -211,11 +210,32 @@ FastAPI 默认的 422 被全局异常处理器改写成 400（参考 FAQ）。
 
 ---
 
-## 5. 测试
+## 5. 前端易用性设计
+
+前端的目标是「不查文档、不记 ID 也能把流程走完」，因此做了这些处理：
+
+| 便利功能 | 说明 |
+| --- | --- |
+| **仪表盘首页** | 登录后直接看到题库题数、我的提交/通过数、最近 5 条提交、快捷操作指引；管理员额外看到用户数与最近日志访问 |
+| **下拉选择代替手输 ID** | 题目、语言、提交记录、用户全部是下拉框（显示 `id · 标题` 等可读标签），不需要记编号 |
+| **图形化题目编辑器** | 新增/编辑题目按字段填写，样例与测试点用「选数量 + 逐条填写输入输出」的方式编辑，同时保留 JSON 高级模式；ID 已存在时自动切换为覆盖保存 |
+| **代码模板** | 提交页可按当前语言一键插入 Python / C++ / C / Java 模板骨架 |
+| **提交后自动轮询** | 提交后自动轮询并显示进度条，完成后直接内联展示编译信息、运行结果、测试点明细 |
+| **详情页自动刷新** | 评测进行中每 1 秒自动刷新（上限 120 次），完成后停止 |
+| **提交记录直接展开详情** | 记录列表下方可直接选中某条记录展开详情与测试点明细，不必跳页 |
+| **一键导入题库** | AI 命题结果可直接 `create`/`update` 导入题库，导入后即可在题库中查看并提交 |
+| **注册后自动填充用户名** | 注册成功后用户名自动填入登录框，省一次输入 |
+| **缓存与刷新** | 题目/提交/语言列表带会话内缓存，页面提供 🔄 按钮与侧边栏「刷新」一键清缓存 |
+| **错误提示可读** | 所有请求统一展示 `HTTP 状态码 | code | msg`，与后端异常语义一致 |
+| **侧边栏状态** | 常驻显示当前用户、身份、提交/通过统计，并提供快捷退出与连通性检测 |
+
+---
+
+## 6. 测试
 
 ```bash
 python run.py test            # 端到端接口测试：228 项断言
-python run.py test-frontend   # 前端页面冒烟测试：11 项断言
+python run.py test-frontend   # 前端渲染 + 交互测试：31 项断言
 python -m ruff check .        # 代码规范检查
 ```
 
@@ -229,11 +249,22 @@ python -m ruff check .        # 代码规范检查
 * 评测日志可见性、访问审计；
 * AI 命题全链路（SSE 进度、中断、Token 计费、导入题库后提交标程得满分）。
 
+前端测试使用 Streamlit 官方 `AppTest` 真正执行页面脚本，覆盖：
+
+* 五个页面在「未登录 / 已登录 / 管理员」三种状态下的渲染；
+* 登录流程与 `session_state` 中的身份写入；
+* 用图形表单新建题目，并核对入库后的字段、样例与测试点；
+* 界面插入代码模板 → 提交 → 自动轮询 → 展示评测结果（并核对满分）；
+* 从下拉列表选择提交并展示测试点明细；
+* 管理员用下拉框变更用户角色并核对生效结果。
+
 ---
 
-## 6. 已知限制
+## 7. 已知限制
 
 * 数据存储使用 JSON 文件（配合进程内异步锁），适合课程规模；如需水平扩展可换成数据库；
 * 内存限制依赖 `psutil` 轮询采样，极短时间的瞬时内存尖峰可能漏检；
 * 提交频率限制使用进程内计数，服务重启后清零；
-* 前端为单页导航式布局（Streamlit 原生 `radio` 导航），未使用 `pages/` 多页目录。
+* 前端为单页导航式布局（Streamlit 原生 `radio` 导航），未使用 `pages/` 多页目录；
+* 前端的列表数据带有会话内缓存，跨页面新增/删除后会自动失效，但多用户同时改动时
+  需要点一下 🔄 刷新才能看到最新结果。
