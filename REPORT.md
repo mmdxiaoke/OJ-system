@@ -2,7 +2,7 @@
 
 **项目名称**：Python OJ —— 小型 Online Judge 系统
 **技术栈**：FastAPI（全异步）+ Pydantic v2 + Uvicorn + Streamlit + bcrypt + psutil + httpx
-**代码规模**：后端约 3 500 行、前端约 1 000 行、测试约 1 000 行
+**代码规模**：后端 3 328 行（37 个文件）、前端 969 行（7 个文件）、测试 1 017 行（4 个文件），合计约 5 400 行 Python
 
 ---
 
