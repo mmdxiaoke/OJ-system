@@ -1,0 +1,38 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# 运行时数据（题目、用户、提交、日志、模型密钥）
+data/
+.debugdata/
+tests/.tmp/
+*.log
+
+# 评测临时目录
+oj_run_*/
+oj_ai_*/
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 测试与覆盖率产物
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/test_output.txt

@@ -1,0 +1,8 @@
+# 统一使用 LF，避免跨平台换行符抖动
+* text=auto eol=lf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jpg binary
+*.pdf binary
+*.ico binary

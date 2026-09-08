@@ -1,0 +1,26 @@
+[project]
+name = "python-oj"
+version = "1.0.0"
+description = "程序设计训练（Python）大作业：小型 Online Judge 系统"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = ["data", ".debugdata", "tests/.tmp"]
+
+[tool.ruff.lint]
+# 选用与课程要求（结构清晰、注释规范）相匹配的规则集
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "B008",   # FastAPI 的 Depends 必须写在默认参数里
+    "E501",   # 长行由 line-length 控制
+    "RUF012", # 类属性可变默认值在本项目里均不共享状态
+    "SIM108", # 三元表达式并非总是更清晰
+    "RUF001", # 项目注释与提示使用中文全角标点
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SIM115", "B011"]
