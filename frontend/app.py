@@ -16,31 +16,54 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
-from frontend.views import ai_page, auth_page, problem_page, submission_page  # noqa: E402
-from frontend.views.common import client, current_user  # noqa: E402
+from frontend.views import (  # noqa: E402
+    ai_page,
+    auth_page,
+    dashboard,
+    problem_page,
+    submission_page,
+)
+from frontend.views.common import clear_cache, client, current_user, role_text  # noqa: E402
 
 st.set_page_config(page_title="Python OJ", page_icon="🧪", layout="wide")
 
 PAGES = {
-    "用户中心": auth_page.render,
+    "仪表盘": dashboard.render,
     "题库": problem_page.render,
     "评测中心": submission_page.render,
     "AI 智能命题": ai_page.render,
+    "用户中心": auth_page.render,
 }
 
 
 def main() -> None:
     st.sidebar.title("🧪 Python OJ")
     user = current_user()
+
     if user:
-        st.sidebar.success(f"已登录：{user['username']}\n\n角色：{user['role']}")
+        st.sidebar.success(f"已登录：**{user['username']}**\n\n身份：{role_text(user.get('role'))}")
+        profile = client().me(user["user_id"])
+        if profile.ok:
+            data = profile.data or {}
+            st.sidebar.caption(
+                f"提交 {data.get('submit_count', 0)} 次 · 通过 {data.get('resolve_count', 0)} 题"
+            )
+        if st.sidebar.button("退出登录", key="sidebar_logout"):
+            client().logout()
+            st.session_state.user = None
+            clear_cache()
+            st.rerun()
     else:
         st.sidebar.info("未登录（部分接口会返回 401）")
 
     st.sidebar.caption(f"后端：{st.session_state.get('api_base', 'http://127.0.0.1:8000')}")
     choice = st.sidebar.radio("导航", list(PAGES.keys()))
     st.sidebar.divider()
-    if st.sidebar.button("测试后端连通性"):
+    col1, col2 = st.sidebar.columns(2)
+    if col1.button("🔄 刷新", key="sidebar_refresh", help="清空缓存并重新加载数据"):
+        clear_cache()
+        st.rerun()
+    if col2.button("🩺 连通性", key="sidebar_ping"):
         result = client().get("/health")
         if result.ok:
             st.sidebar.success("后端在线")
