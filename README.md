@@ -1,0 +1,239 @@
+# Python OJ：小型 Online Judge 系统
+
+程序设计训练（Python）大作业。基于 **FastAPI（全异步）+ Streamlit** 实现了一个功能完整的
+Online Judge，覆盖题目管理、自动评测、评测管理、用户与权限、评测日志与审计、前端交互，
+并在其之上实现了 **AI 智能命题**（大模型辅助出题）。
+
+* 所有接口均使用 `async def` 异步实现（评测在后台 `asyncio.create_task` 中执行）；
+* 统一响应结构 `{"code": ..., "msg": ..., "data": ...}`，`code` 与 HTTP 状态码一致；
+* 所有权限判断都在后端完成，前端隐藏按钮不作为权限依据。
+
+---
+
+## 1. 快速开始
+
+```bash
+# 1) 安装依赖（建议使用虚拟环境）
+python -m venv .venv
+.venv\Scripts\activate            # Windows
+# source .venv/bin/activate       # Linux / macOS
+pip install -r requirements.txt
+
+# 2) 启动后端（默认 http://127.0.0.1:8000，接口文档 /docs）
+python run.py backend
+
+# 3) 另开一个终端启动前端（默认 http://127.0.0.1:8501）
+python run.py frontend
+```
+
+首次启动会自动创建数据目录 `data/`、内置语言（`python` / `cpp` / `c`）以及初始管理员
+账号：
+
+| 用户名 | 密码 | 角色 |
+| --- | --- | --- |
+| `admin` | `admintestpassword` | admin |
+
+可用环境变量覆盖：
+
+| 变量 | 含义 | 默认值 |
+| --- | --- | --- |
+| `OJ_DATA_DIR` | 数据目录 | `<项目根>/data` |
+| `OJ_API_BASE` | 前端访问的后端地址 | `http://127.0.0.1:8000` |
+| `OJ_RESET_OPEN` | 置为 `1` 时，登录用户即可调用 `/api/reset/`（便于自动测试） | 未设置 |
+| `OJ_SESSION_HTTPS` | 置为 `1` 时 Cookie 带 `Secure` 标记 | 未设置 |
+
+---
+
+## 2. 目录结构
+
+```
+OJ/
+├── backend/                 # FastAPI 后端
+│   ├── app.py               # 应用工厂：中间件、异常处理、路由注册、启动初始化
+│   ├── config.py            # 全局配置（默认限制、会话、内置语言等）
+│   ├── core/
+│   │   ├── responses.py     # 统一响应与异常体系（401>403>400>429>409>404>500）
+│   │   ├── storage.py       # JSON 文件持久化（原子写 + 异步锁）
+│   │   ├── security.py      # bcrypt 密码、会话 ID、模型密钥加解密
+│   │   ├── deps.py          # 会话解析与权限依赖（get_current_user / require_admin）
+│   │   ├── request.py       # 请求体读取（校验失败统一 400）
+│   │   └── pagination.py    # 分页参数解析
+│   ├── models/problem.py    # 题目字段校验与默认值补全
+│   ├── services/            # 业务层：题目、用户、提交、语言、日志、统计
+│   ├── judge/
+│   │   ├── runner.py        # 进程执行：超时、内存监控、进程树清理
+│   │   ├── comparator.py    # 输出比对（忽略行末空格与末尾空行）
+│   │   └── engine.py        # 编译 → 逐测试点运行 → 汇总得分
+│   ├── ai/
+│   │   ├── config_store.py  # 模型配置（密钥加密存储）
+│   │   ├── llm_client.py    # OpenAI 兼容客户端（流式 + 用量统计）
+│   │   ├── pipeline.py      # 命题流水线：分析→题面→标程→数据→校验
+│   │   └── task_manager.py  # 任务调度、SSE 进度、中断、Token 计费
+│   └── routers/             # 各模块路由
+├── frontend/                # Streamlit 前端
+│   ├── app.py               # 入口与导航
+│   ├── api_client.py        # 统一 REST 调用封装（Cookie 会话）
+│   └── views/               # 用户中心 / 题库 / 评测中心 / AI 智能命题
+├── tests/
+│   ├── test_api.py          # 端到端接口测试（228 项断言）
+│   ├── test_frontend.py     # 前端页面冒烟测试（Streamlit AppTest）
+│   └── fake_llm_server.py   # 本地假模型服务，用于离线验证 AI 链路
+├── data/                    # 运行时数据（已加入 .gitignore）
+├── run.py                   # 一键启动脚本
+└── requirements.txt
+```
+
+---
+
+## 3. 接口一览
+
+完整契约见 [API.md](API.md)，实现严格对齐其路径、参数、响应与异常码。
+
+### Step 1 题目管理
+
+| 方法 | 路径 | 权限 |
+| --- | --- | --- |
+| GET | `/api/problems/` | 登录用户 |
+| POST | `/api/problems/` | 登录用户 |
+| GET | `/api/problems/{problem_id}` | 登录用户 |
+| PUT | `/api/problems/{problem_id}` | 登录用户 |
+| DELETE | `/api/problems/{problem_id}` | **仅管理员** |
+
+### Step 2 & 3 评测
+
+| 方法 | 路径 | 权限 |
+| --- | --- | --- |
+| POST | `/api/submissions/` | 登录用户（1 分钟最多 3 次） |
+| GET | `/api/submissions/` | 本人 / 管理员 |
+| GET | `/api/submissions/{submission_id}` | 本人 / 管理员 |
+| PUT | `/api/submissions/{submission_id}/rejudge` | **仅管理员** |
+| POST | `/api/languages/` | 登录用户 |
+| GET | `/api/languages/` | 公开 |
+
+### Step 4 用户
+
+| 方法 | 路径 | 权限 |
+| --- | --- | --- |
+| POST | `/api/auth/login` / `/api/auth/logout` | 登录用户（登出） |
+| POST | `/api/users/` | 公开（注册） |
+| POST | `/api/users/admin` | **仅管理员** |
+| GET | `/api/users/{user_id}` | 本人 / 管理员 |
+| GET | `/api/users/` | **仅管理员** |
+| PUT | `/api/users/{user_id}/role` | **仅管理员** |
+
+### Step 5 日志
+
+| 方法 | 路径 | 权限 |
+| --- | --- | --- |
+| GET | `/api/submissions/{submission_id}/log` | 本人 / 管理员 / 题目公开日志时任意登录用户 |
+| PUT | `/api/problems/{problem_id}/log_visibility` | **仅管理员** |
+| GET | `/api/logs/access/` | **仅管理员** |
+
+### Advance AI 智能命题
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET/PUT | `/api/ai/model-config` | 配置提供商 URL / 模型 / 密钥 / 计价方式（查询不返回密钥） |
+| POST | `/api/ai/problem-tasks/` | 创建命题任务（异步执行） |
+| GET | `/api/ai/problem-tasks/{task_id}` | 状态、进度、结果、Token 用量与费用 |
+| GET | `/api/ai/problem-tasks/{task_id}/events` | **SSE 实时进度** |
+| PUT | `/api/ai/problem-tasks/{task_id}/cancel` | 中断任务（真正取消后台任务与 HTTP 请求） |
+| POST | `/api/ai/problem-tasks/{task_id}/apply` | 把生成结果导入题库（新增 / 覆盖） |
+
+### 其他
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/health` | 健康检查 |
+| POST | `/api/reset/` | 系统重置（清空测试数据并重建初始管理员） |
+
+---
+
+## 4. 关键实现说明
+
+### 4.1 异常与状态码优先级
+
+`code` 字段始终等于 HTTP 状态码，错误体形如 `{"code": 404, "msg": "problem not found", "data": null}`。
+优先级 **401 > 403 > 400 > 429 > 409 > 404 > 500** 通过两点保证：
+
+1. 鉴权写在 FastAPI `Depends` 中，依赖在请求体校验之前求解，因此未登录一定是 401；
+2. 各路由内部按优先级顺序显式检查（如提交接口先校验参数 400、再限流 429、最后查存在性 404）。
+
+FastAPI 默认的 422 被全局异常处理器改写成 400（参考 FAQ）。
+
+### 4.2 评测引擎
+
+1. 源码写入临时目录，按语言配置决定是否编译；
+2. C++ 编译失败 → `CE`；Python 用 `py_compile` 做语法检查，语法错误同样判 `CE`；
+3. 每个测试点独立运行：输入写入 stdin，捕获 stdout / stderr；
+4. 资源限制：
+   * **超时**：`asyncio.wait_for` + 超时后杀整棵进程树（Windows 用 `taskkill /T`，
+     POSIX 用 `killpg`），判定 `TLE`；
+   * **内存**：`psutil` 每 20 ms 采样进程树 RSS 峰值，超过题目限制立即终止并判定 `MLE`，
+     POSIX 额外设置 `RLIMIT_CPU` / `RLIMIT_FSIZE` 兜底；
+   * **输出**：单测试点输出上限 4 MB，防止用户代码刷爆内存；
+5. 输出比对忽略行末空格与末尾多余空行，其余严格一致；
+6. 每个测试点 10 分，得分 = 通过测试点数 × 10，`counts` = 测试点总数 × 10；
+7. 限制取值顺序：**题目配置 → 语言配置 → 系统默认（3 s / 128 MB）**。
+
+### 4.3 动态注册语言的安全性
+
+* 命令先切分成 argv 再直接 `exec`，**不经过 shell**，`;`、`|`、`$( )` 等字符被直接拒绝；
+* 只允许白名单编译器/解释器（`g++`、`python`、`javac`、`node` 等），明确禁止
+  `sh`/`bash`/`cmd`/`powershell`/`sudo` 等；
+* `{src}` / `{exe}` / `{workdir}` 由服务端替换为受控临时目录下的绝对路径，杜绝路径穿越。
+
+### 4.4 会话与权限
+
+* 服务端保存会话（`uuid4` + 随机字节生成 ID），Cookie 为 `HttpOnly` + `SameSite=Lax`；
+* 登出即删除服务端会话；被 `banned` 的用户登录返回 403，已登录的会话访问任意接口也返回 403；
+* 密码使用 **bcrypt** 存储，任何接口都不会返回密码字段。
+
+### 4.5 AI 智能命题
+
+流水线分六个阶段，每阶段都通过 SSE 推送进度：
+
+1. **需求分析**：把知识点、难度、附加要求整理成命题纲要（考点、数据规模、边界情况）；
+2. **题面生成**：产出可直接入库的题目字段；
+3. **标程 + 暴力解**：同时生成高效解与朴素解；
+4. **数据生成脚本**：由模型编写 Python 脚本，打印若干组输入（含小数据与上限数据）；
+5. **实际执行与校验**：真正运行脚本得到输入 → 用标程产出期望输出 →
+   在 `scale=small` 的测试点上与暴力解交叉验证，不一致则回到第 3 步重试（最多两轮）；
+6. **整理结果**：输出完整题目配置，可一键导入题库。
+
+* **实时进度与中断**：进度事件通过 SSE 推送；中断时 `task.cancel()` 会真正取消后台
+  asyncio 任务与进行中的 HTTP 请求，任务状态变为 `cancelled`；
+* **Token 与费用**：分别累计输入/输出 Token（来自模型 `usage` 字段），
+  `费用 = 输入Token/计价单位×输入单价 + 输出Token/计价单位×输出单价`；
+  若服务端未返回 `usage`，会标记为估算值并在界面提示；
+* **密钥安全**：密钥用本地主密钥（`data/secret.key`，权限 600，不进入 git）派生密钥流加密后
+  落盘，查询接口只返回 `api_key_configured: true/false`。
+
+---
+
+## 5. 测试
+
+```bash
+python run.py test            # 端到端接口测试：228 项断言
+python run.py test-frontend   # 前端页面冒烟测试：11 项断言
+python -m ruff check .        # 代码规范检查
+```
+
+端到端测试会自行拉起一个真实的 uvicorn 服务（临时数据目录 + 随机端口）与一个本地
+假模型服务，覆盖：
+
+* 全部接口的正常路径与 400 / 401 / 403 / 404 / 409 / 429 异常路径；
+* 状态码优先级、分页与筛选规则；
+* `AC / WA / TLE / MLE / RE / CE` 与部分得分（逐测试点结果断言）；
+* Python 与 C++ 两种语言、动态注册语言与命令注入拦截；
+* 评测日志可见性、访问审计；
+* AI 命题全链路（SSE 进度、中断、Token 计费、导入题库后提交标程得满分）。
+
+---
+
+## 6. 已知限制
+
+* 数据存储使用 JSON 文件（配合进程内异步锁），适合课程规模；如需水平扩展可换成数据库；
+* 内存限制依赖 `psutil` 轮询采样，极短时间的瞬时内存尖峰可能漏检；
+* 提交频率限制使用进程内计数，服务重启后清零；
+* 前端为单页导航式布局（Streamlit 原生 `radio` 导航），未使用 `pages/` 多页目录。
