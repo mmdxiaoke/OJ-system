@@ -80,8 +80,12 @@ OJ/
 │   └── fake_llm_server.py   # 本地假模型服务，用于离线验证 AI 链路
 ├── data/                    # 运行时数据（已加入 .gitignore）
 ├── run.py                   # 一键启动脚本
+├── CODE_GUIDE.md            # 代码导读：功能 ↔ 文件 ↔ 函数 对照
 └── requirements.txt
 ```
+
+> **想快速定位代码**：直接看 [CODE_GUIDE.md](CODE_GUIDE.md)——它按 Step 1~6 与 AI 模块
+> 列出每个功能对应的路由函数、服务函数和存储位置，并提供「改某处该动哪里」的指引。
 
 ---
 
