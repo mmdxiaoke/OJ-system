@@ -36,3 +36,6 @@ Thumbs.db
 .coverage
 htmlcov/
 tests/test_output.txt
+
+# 实验报告导出文件（正文 REPORT.md 入库，PDF 单独提交到网络学堂）
+REPORT.pdf
