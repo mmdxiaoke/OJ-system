@@ -220,16 +220,17 @@ def _languages() -> None:
                                key="lang_preset")
     preset = LANGUAGE_PRESETS.get(preset_name, {})
     with st.form("lang_form"):
-        name = st.text_input("语言名称", value=preset.get("name", ""))
-        file_ext = st.text_input("代码文件扩展名", value=preset.get("file_ext", ".py"))
-        compile_cmd = st.text_input("编译命令（解释型语言留空）", value=preset.get("compile_cmd", ""))
-        run_cmd = st.text_input("运行命令", value=preset.get("run_cmd", "python3 {src}"))
+        name = st.text_input("语言名称", value=preset.get("name", ""), key="lang_name")
+        file_ext = st.text_input("代码文件扩展名", value=preset.get("file_ext", ".py"), key="lang_ext")
+        compile_cmd = st.text_input("编译命令（解释型语言留空）", value=preset.get("compile_cmd", ""),
+                                    key="lang_compile")
+        run_cmd = st.text_input("运行命令", value=preset.get("run_cmd", "python3 {src}"), key="lang_run")
         col1, col2 = st.columns(2)
         time_limit = col1.number_input("时间限制（秒）", min_value=0.1, max_value=60.0,
-                                       value=1.0, step=0.5)
+                                       value=1.0, step=0.5, key="lang_tl")
         memory_limit = col2.number_input("内存限制（MB）", min_value=16, max_value=4096,
-                                         value=128, step=16)
-        submitted = st.form_submit_button("注册语言", type="primary")
+                                         value=128, step=16, key="lang_ml")
+        submitted = st.form_submit_button("注册语言", type="primary", key="lang_submit")
     if submitted:
         payload = {
             "name": name.strip(),
@@ -253,7 +254,7 @@ def _rejudge() -> None:
     submission_id = submission_selector("选择要重新评测的提交", "rejudge_sid", limit=50)
     if not submission_id:
         return
-    if st.button("重新评测", type="primary"):
+    if st.button("重新评测", type="primary", key="rejudge_btn"):
         result = client().rejudge(submission_id)
         if result.ok:
             st.success(f"已重新评测，当前状态：{status_text(result.data.get('status'))}")

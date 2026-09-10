@@ -62,7 +62,7 @@ def _list() -> None:
     problems = problem_list(force=True)
     col1, col2 = st.columns([5, 1])
     col1.caption(f"共 {len(problems)} 道题目；新增或编辑后列表会自动刷新。")
-    if col2.button("🔄 刷新"):
+    if col2.button("🔄 刷新", key="problem_list_refresh"):
         clear_cache()
         st.rerun()
     if not problems:
@@ -156,14 +156,14 @@ def _delete() -> None:
         return
     st.warning(f"即将删除题目 {problem_id}，该操作不可撤销。")
     confirm = st.checkbox("我确认删除该题目", key="delete_confirm")
-    if st.button("删除题目", type="primary"):
+    if st.button("删除题目", type="primary", key="delete_btn"):
         if not confirm:
             st.warning("请先勾选确认。")
             return
         result = client().delete_problem(problem_id)
         if notify(result, f"已删除：{problem_id}"):
+            # 清缓存即可：下一轮 problem_selector 会在创建控件前丢弃失效的选中值
             clear_cache()
-            st.session_state.pop("delete_pick", None)
 
 
 def _visibility() -> None:
@@ -179,7 +179,7 @@ def _visibility() -> None:
         "允许所有登录用户查看该题评测日志的测试点明细",
         value=current, key=f"vis_toggle_{problem_id}",
     )
-    if st.button("保存可见性设置", type="primary"):
+    if st.button("保存可见性设置", type="primary", key="vis_save"):
         result = client().set_log_visibility(problem_id, bool(public_cases))
         if notify(result, "可见性已更新"):
             clear_cache()

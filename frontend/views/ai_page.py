@@ -79,7 +79,7 @@ def _model_config() -> None:
                                          format="%.4f", key="cfg_out")
         price_unit = col3.number_input("计价单位（tokens）", min_value=1, value=1000000,
                                        step=1000, key="cfg_unit")
-        submitted = st.form_submit_button("保存配置", type="primary")
+        submitted = st.form_submit_button("保存配置", type="primary", key="save_config")
     if submitted:
         payload = {
             "provider_url": provider_url.strip(),
@@ -118,7 +118,7 @@ def _compose() -> None:
                                    help="留空表示从零出题；填写后会读取该题配置作为改编基础")
         mode = st.radio("执行方式", ["实时观察进度（SSE）", "后台执行（稍后查询）"],
                         horizontal=True, key="ai_mode")
-        submitted = st.form_submit_button("开始命题", type="primary")
+        submitted = st.form_submit_button("开始命题", type="primary", key="start_task")
 
     if not submitted:
         return

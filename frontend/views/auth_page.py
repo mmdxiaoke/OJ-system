@@ -19,6 +19,25 @@ from frontend.views.common import (
 ROLES = ["user", "admin", "banned"]
 ROLE_FORMAT = {"user": "普通用户 user", "admin": "管理员 admin", "banned": "禁用 banned"}
 
+# 非控件键：注册成功后待回填的登录名与提示消息。
+# Streamlit 不允许在控件实例化之后修改它的 session_state（会抛
+# StreamlitWidgetAlreadyInstantiatedError），所以这里采用
+# 「注册分支打标记 → st.rerun() → 下一轮渲染控件前回填」的写法。
+_LOGIN_PREFILL_KEY = "_login_username_prefill"
+_AUTH_FLASH_KEY = "_auth_flash"
+
+
+def _apply_pending_auth_state() -> str | None:
+    """在创建任何控件之前回填登录名，并取出待展示的提示消息。
+
+    必须是 _login_register 的第一件事：一旦 login_username 控件被创建，
+    再写这个键就会报错。
+    """
+    pending = st.session_state.pop(_LOGIN_PREFILL_KEY, None)
+    if pending is not None:
+        st.session_state["login_username"] = pending
+    return st.session_state.pop(_AUTH_FLASH_KEY, None)
+
 
 def render() -> None:
     st.header("用户中心")
@@ -42,6 +61,10 @@ def render() -> None:
 
 
 def _login_register(user: dict | None) -> None:
+    # 必须在创建任何控件之前执行，否则回填会触发
+    # StreamlitWidgetAlreadyInstantiatedError
+    flash = _apply_pending_auth_state()
+
     if user:
         st.info(f"当前已登录：**{user['username']}**（{role_text(user.get('role'))}）")
         col1, col2 = st.columns([1, 4])
@@ -57,6 +80,8 @@ def _login_register(user: dict | None) -> None:
     left, right = st.columns(2)
     with left:
         st.subheader("登录")
+        if flash:
+            st.success(flash)
         with st.form("login_form"):
             username = st.text_input("用户名", key="login_username")
             password = st.text_input("密码", type="password", key="login_password")
@@ -92,9 +117,13 @@ def _login_register(user: dict | None) -> None:
             else:
                 result = client().register(new_name.strip(), new_pwd)
                 if result.ok:
-                    # 注册成功后把用户名填进登录框，省去再输一次
-                    st.session_state["login_username"] = new_name.strip()
-                    st.success(f"注册成功，user_id = {result.data.get('user_id')}；用户名已填入左侧登录框，输入密码即可登录。")
+                    # 打标记 + 重跑：由 _apply_pending_auth_state 在下一轮回填登录名
+                    st.session_state[_LOGIN_PREFILL_KEY] = new_name.strip()
+                    st.session_state[_AUTH_FLASH_KEY] = (
+                        f"注册成功，user_id = {result.data.get('user_id')}；"
+                        "用户名已填入左侧登录框，输入密码即可登录。"
+                    )
+                    st.rerun()
                 else:
                     st.error(result.error_text())
 
