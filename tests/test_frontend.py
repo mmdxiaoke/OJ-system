@@ -237,9 +237,65 @@ def main() -> int:
         role = (victim.json().get("data") or {}).get("role") if victim.status_code == 200 else None
         checker.check("角色变更已生效", role == "admin", f"HTTP {victim.status_code} role={role}")
 
+        print("\n=== 管理员配置日志可见性与删除题目 ===")
+        at.sidebar.radio[0].set_value("题库").run()
+        at.selectbox(key="vis_pick").set_value("p_ui").run()
+        at.toggle(key="vis_toggle_p_ui").set_value(True)
+        at.button(key="vis_save").click().run()
+        checker.no_exception(at, "保存日志可见性无异常")
+        visible = api.get(f"{base}/api/problems/p_ui", timeout=10).json()["data"]
+        checker.check("日志可见性已生效", visible.get("public_cases") is True, str(visible.get("public_cases")))
+
+        at.selectbox(key="delete_pick").set_value("p_front").run()
+        at.checkbox(key="delete_confirm").set_value(True)
+        at.button(key="delete_btn").click().run()
+        checker.no_exception(at, "删除题目无异常")
+        deleted = api.get(f"{base}/api/problems/p_front", timeout=10)
+        checker.check("题目已删除（404）", deleted.status_code == 404, f"HTTP {deleted.status_code}")
+
+        print("\n=== 动态注册语言 ===")
+        at.sidebar.radio[0].set_value("评测中心").run()
+        at.text_input(key="lang_name").set_value("nodejs")
+        at.text_input(key="lang_ext").set_value(".js")
+        at.text_input(key="lang_run").set_value("node {src}")
+        at.button(key="lang_submit").click().run()
+        checker.no_exception(at, "注册语言无异常")
+        names = api.get(f"{base}/api/languages/", timeout=10).json()["data"]["name"]
+        checker.check("新语言已注册", "nodejs" in names, str(names))
+
+        print("\n=== AI 模型配置填充示例 ===")
+        at.sidebar.radio[0].set_value("AI 智能命题").run()
+        at.button(key="fill_example").click().run()
+        checker.no_exception(at, "填充示例配置无异常")
+        checker.check("示例值已写入表单",
+                      str(state_value(at, "cfg_url", "")).startswith("http"),
+                      str(state_value(at, "cfg_url", "")))
+
+        print("\n=== 退出登录 / 注册 / 回填登录名 ===")
+        at.sidebar.radio[0].set_value("用户中心").run()
+        at.button(key="logout_btn").click().run()
+        checker.check("退出登录后会话已清空", _state_user(at) is None, str(_state_user(at)))
+
+        at.text_input(key="reg_username").set_value("newbie01")
+        at.text_input(key="reg_password").set_value("password123")
+        at.text_input(key="reg_password2").set_value("password123")
+        at.button(key="register_submit").click().run()
+        checker.no_exception(at, "注册提交无异常（回归：不能修改已实例化控件）")
+        checker.check("注册后登录框自动回填用户名",
+                      state_value(at, "login_username", "") == "newbie01",
+                      str(state_value(at, "login_username", "")))
+        register_text = page_text(at)
+        checker.check("注册后给出成功提示", "注册成功" in register_text, register_text[:200])
+
+        at.text_input(key="login_password").set_value("password123")
+        at.button(key="login_submit").click().run()
+        checker.no_exception(at, "用回填的用户名登录无异常")
+        checker.check("新注册账号登录成功",
+                      (_state_user(at) or {}).get("username") == "newbie01", str(_state_user(at)))
+
         print("\n=== 侧边栏 ===")
         sidebar_text = " ".join(str(x.value) for x in at.sidebar.markdown)
-        checker.check("侧边栏显示当前用户", "admin" in page_text(at), sidebar_text[:120])
+        checker.check("侧边栏显示当前用户", "newbie01" in page_text(at), sidebar_text[:120])
 
         print("\n" + "=" * 60)
         if checker.failures:
